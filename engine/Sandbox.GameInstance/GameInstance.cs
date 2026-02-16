@@ -99,6 +99,8 @@ internal class GameInstance : IGameInstance
 	{
 		SentrySdk.AddBreadcrumb( $"Shutdown Game {Ident}", "gameinstance.shutdown" );
 
+		DestroyCustomLoadingScreen();
+
 		if ( _packageAssembly != null )
 		{
 			ExpirableSynchronizationContext.ForbidPersistentTaskMethods( _packageAssembly );
@@ -137,6 +139,49 @@ internal class GameInstance : IGameInstance
 		}
 
 		ErrorReporter.ResetCounters();
+	}
+
+	/// <summary>
+	/// Try to find and create a custom loading screen from the loading assembly.
+	/// Looks for Panel subclasses in any loaded .loading assembly.
+	/// </summary>
+	private void TryCreateCustomLoadingScreen()
+	{
+		if ( Application.IsHeadless || Application.IsDedicatedServer )
+			return;
+
+		var panelType = Game.TypeLibrary.GetTypes<Sandbox.UI.Panel>()
+			.Where( x => x.TargetType.Assembly.GetName().Name?.EndsWith( ".loading" ) == true )
+			.FirstOrDefault();
+
+		if ( panelType is null )
+			return;
+
+		try
+		{
+			var rootPanel = new Sandbox.UI.RootPanel();
+			var panel = panelType.Create<Sandbox.UI.Panel>();
+			rootPanel.AddChild( panel );
+
+			LoadingScreen.CustomPanel = rootPanel;
+			Log.Info( $"Custom loading screen created: {panelType.FullName}" );
+		}
+		catch ( Exception e )
+		{
+			Log.Warning( e, $"Failed to create custom loading screen: {e.Message}" );
+		}
+	}
+
+	/// <summary>
+	/// Destroy the custom loading screen panel if one was created.
+	/// </summary>
+	private static void DestroyCustomLoadingScreen()
+	{
+		if ( LoadingScreen.CustomPanel is not null )
+		{
+			LoadingScreen.CustomPanel.Delete( true );
+			LoadingScreen.CustomPanel = null;
+		}
 	}
 
 	public InputSettings InputSettings => ProjectSettings.Input;
@@ -235,6 +280,8 @@ internal class GameInstance : IGameInstance
 			Log.Warning( e, $"Exception when loading {Package.FullIdent}: {e.Message}" );
 			return false;
 		}
+
+		TryCreateCustomLoadingScreen();
 
 		//
 		// If we have a map package argument - then use it

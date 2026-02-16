@@ -27,6 +27,7 @@ public static partial class EditorUtility
 
 			compilerSettings.IgnoreFolders.Add( "editor" );
 			compilerSettings.IgnoreFolders.Add( "unittest" );
+			compilerSettings.IgnoreFolders.Add( "loading" );
 			compilerSettings.ReleaseMode = Compiler.ReleaseMode.Release;
 			compilerSettings.StripDisabledTextTrivia = true;
 

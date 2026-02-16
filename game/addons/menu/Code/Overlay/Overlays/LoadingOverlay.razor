@@ -50,6 +50,6 @@
 
     public override void Tick()
     {
-        SetClass( "visible", LoadingScreen.IsVisible );
+        SetClass( "visible", LoadingScreen.IsVisible && !LoadingScreen.HasCustomLoadingScreen );
     }
 }

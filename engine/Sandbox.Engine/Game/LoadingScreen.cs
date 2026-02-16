@@ -42,6 +42,17 @@ public static class LoadingScreen
 	public static List<LoadingContext> Tasks { get; } = [];
 
 	/// <summary>
+	/// The active custom loading screen panel from the game's Loading folder, if any.
+	/// </summary>
+	internal static UI.Panel CustomPanel { get; set; }
+
+	/// <summary>
+	/// If true, a custom loading screen from the game's Loading folder is active.
+	/// The menu's default loading overlay should hide when this is true.
+	/// </summary>
+	public static bool HasCustomLoadingScreen => CustomPanel is not null;
+
+	/// <summary>
 	/// Called by the scene system to tell us about the loading tasks
 	/// </summary>
 	internal static void UpdateLoadingTasks( List<LoadingContext> incoming )

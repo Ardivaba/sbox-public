@@ -374,6 +374,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 
 		LoadingScreen.IsVisible = false;
 		LoadingScreen.Media = null;
+		LoadingScreen.CustomPanel = null;
 
 		Sound.StopAll( 0.2f );
 
