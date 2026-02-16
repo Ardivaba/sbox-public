@@ -39,4 +39,15 @@ internal class LoadedAssembly
 			return false;
 		}
 	}
+
+	public bool IsLoadingAssembly
+	{
+		get
+		{
+			if ( IsGame && Name.EndsWith( ".loading" ) ) return true;
+			if ( IsLibrary && Name.EndsWith( ".loading" ) ) return true;
+
+			return false;
+		}
+	}
 }

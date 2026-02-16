@@ -54,7 +54,8 @@ public partial class RootPanel : Panel
 		Style.Width = Length.Percent( 100 );
 		Style.Height = Length.Percent( 100 );
 
-		GlobalContext.Current.UISystem.AddRoot( this );
+		var uiSystem = GlobalContext.Current.UISystem ?? GlobalContext.Menu?.UISystem;
+		uiSystem?.AddRoot( this );
 		AddToLists();
 
 		StyleSheet.Load( "/styles/rootpanel.scss" );
@@ -69,7 +70,8 @@ public partial class RootPanel : Panel
 	{
 		base.OnDeleted();
 
-		GlobalContext.Current.UISystem.RemoveRoot( this );
+		var uiSystem = GlobalContext.Current.UISystem ?? GlobalContext.Menu?.UISystem;
+		uiSystem?.RemoveRoot( this );
 	}
 
 	internal override void AddToLists()
@@ -209,7 +211,9 @@ public partial class RootPanel : Panel
 	internal void Render( float opacity = 1.0f )
 	{
 		ThreadSafe.AssertIsMainThread();
-		GlobalContext.Current.UISystem.Renderer.Render( this, opacity );
+
+		var uiSystem = GlobalContext.Current.UISystem ?? GlobalContext.Menu?.UISystem;
+		uiSystem?.Renderer.Render( this, opacity );
 	}
 
 	/// <summary>

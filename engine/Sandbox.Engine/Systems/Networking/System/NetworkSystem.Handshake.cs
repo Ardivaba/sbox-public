@@ -466,7 +466,23 @@ internal partial class NetworkSystem
 			return Task.CompletedTask;
 
 		Log.Trace( $"[{this}] I am spawning into the game!" );
-		LoadingScreen.IsVisible = false;
+
+		// Last chance to create a custom loading screen if one wasn't created earlier.
+		// This can happen when the .loading assembly was compiled from network tables
+		// but TryCreateCustomLoadingScreen wasn't reached during CreateGameNetworking.
+		if ( !LoadingScreen.HasCustomLoadingScreen )
+		{
+			IGameInstanceDll.Current?.TryCreateCustomLoadingScreen();
+		}
+
+		if ( LoadingScreen.HasCustomLoadingScreen )
+		{
+			LoadingScreen.IsReadyToJoin = true;
+		}
+		else
+		{
+			LoadingScreen.IsVisible = false;
+		}
 
 		Connection.Local.State = Connection.ChannelState.Connected;
 		source.State = Connection.ChannelState.Connected;

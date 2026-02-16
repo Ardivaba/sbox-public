@@ -10,7 +10,7 @@ public partial class Project
 	/// Whether the project's code has a compiler assigned.
 	/// </summary>
 	[JsonIgnore]
-	public bool HasCompiler => Compiler is not null || EditorCompiler is not null;
+	public bool HasCompiler => Compiler is not null || EditorCompiler is not null || LoadingCompiler is not null;
 
 	[JsonIgnore]
 	internal Compiler Compiler { get; private set; }
@@ -18,10 +18,13 @@ public partial class Project
 	[JsonIgnore]
 	internal Compiler EditorCompiler { get; private set; }
 
+	[JsonIgnore]
+	internal Compiler LoadingCompiler { get; private set; }
+
 	int lastCompilerHash;
 
 	// anything that means we need to re-create the compiler and recompile should be here
-	int CompilerHash => HashCode.Combine( Active, Current == this, Json.SerializeAsObject( Config.GetCompileSettings() ).ToJsonString(), Config.IsStandaloneOnly, Config.Org, Config.Ident, Config.Type, string.Join( ";", PackageReferences() ) );
+	int CompilerHash => HashCode.Combine( Active, Current == this, Json.SerializeAsObject( Config.GetCompileSettings() ).ToJsonString(), Config.IsStandaloneOnly, Config.Org, Config.Ident, HashCode.Combine( Config.Type, string.Join( ";", PackageReferences() ), HasEditorPath(), HasLoadingPath() ) );
 
 	/// <summary>
 	/// These package types should reference package.base
@@ -72,6 +75,7 @@ public partial class Project
 			{
 				compilerSettings.IgnoreFolders.Add( "editor" );
 				compilerSettings.IgnoreFolders.Add( "unittest" );
+				compilerSettings.IgnoreFolders.Add( "loading" );
 
 				//
 				// Override unsafe and whitelist stuff for non-standalone
@@ -139,6 +143,11 @@ public partial class Project
 			}
 
 			Compiler.WatchForChanges();
+		}
+
+		if ( Config.Type == "game" || Config.Type == "library" )
+		{
+			UpdateLoadingCompiler();
 		}
 
 		// We don't need to update editor compiler if we're not running in the editor
@@ -245,6 +254,41 @@ public partial class Project
 		EditorCompiler.WatchForChanges();
 	}
 
+	/// <summary>
+	/// If required, create the loading screen compiler
+	/// </summary>
+	void UpdateLoadingCompiler()
+	{
+		LoadingCompiler?.Dispose();
+		LoadingCompiler = null;
+
+		if ( !Active )
+			return;
+
+		if ( !HasLoadingPath() )
+			return;
+
+		var compilerSettings = Config.GetCompileSettings();
+		var compilerName = $"{Config.Org}.{Config.Ident}".Trim( '.' ) + ".loading";
+
+		Log.Trace( $"Create Loading Compiler `{compilerName}`" );
+
+		LoadingCompiler = CompileGroup.CreateCompiler( compilerName, GetLoadingPath(), compilerSettings );
+
+		LoadingCompiler.AddBaseReference();
+
+		LoadingCompiler.GeneratedCode.AppendLine( $"global using Microsoft.AspNetCore.Components;" );
+		LoadingCompiler.GeneratedCode.AppendLine( $"global using Microsoft.AspNetCore.Components.Rendering;" );
+		LoadingCompiler.GeneratedCode.AppendLine( $"global using static Sandbox.Internal.GlobalGameNamespace;" );
+
+		foreach ( var reference in compilerSettings.DistinctAssemblyReferences )
+		{
+			LoadingCompiler.AddReference( reference );
+		}
+
+		LoadingCompiler.WatchForChanges();
+	}
+
 	internal static async Task<bool> CompileAsync()
 	{
 		while ( CompileGroup.IsBuilding )
@@ -293,7 +337,7 @@ public partial class Project
 	/// </summary>
 	private static Project FindByCompiler( Compiler compiler )
 	{
-		return Project.All.FirstOrDefault( x => x.Compiler == compiler || x.EditorCompiler == compiler );
+		return Project.All.FirstOrDefault( x => x.Compiler == compiler || x.EditorCompiler == compiler || x.LoadingCompiler == compiler );
 	}
 
 	/// <summary>

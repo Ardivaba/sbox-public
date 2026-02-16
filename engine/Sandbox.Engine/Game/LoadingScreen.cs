@@ -42,6 +42,39 @@ public static class LoadingScreen
 	public static List<LoadingContext> Tasks { get; } = [];
 
 	/// <summary>
+	/// The active custom loading screen panel from the game's Loading folder, if any.
+	/// </summary>
+	public static UI.Panel CustomPanel { get; set; }
+
+	/// <summary>
+	/// If true, a custom loading screen from the game's Loading folder is active.
+	/// The menu's default loading overlay should hide when this is true.
+	/// </summary>
+	public static bool HasCustomLoadingScreen => CustomPanel is not null;
+
+	/// <summary>
+	/// If true, loading has completed and the game is ready to join.
+	/// The custom loading screen should show a "Join" button when this is true.
+	/// </summary>
+	public static bool IsReadyToJoin { get; set; }
+
+	/// <summary>
+	/// Called from the custom loading screen's "Join" button.
+	/// Dismisses the loading screen and enters the game.
+	/// </summary>
+	public static void Join()
+	{
+		IsVisible = false;
+		IsReadyToJoin = false;
+
+		if ( CustomPanel is not null )
+		{
+			CustomPanel.Delete( true );
+			CustomPanel = null;
+		}
+	}
+
+	/// <summary>
 	/// Called by the scene system to tell us about the loading tasks
 	/// </summary>
 	internal static void UpdateLoadingTasks( List<LoadingContext> incoming )
