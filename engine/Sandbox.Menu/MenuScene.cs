@@ -23,7 +23,7 @@ public static class MenuScene
 	public static void Tick()
 	{
 		if ( Scene is null ) return;
-		if ( !Game.IsMainMenuVisible ) return;
+		if ( !Game.IsMainMenuVisible && !LoadingScreen.IsVisible ) return;
 
 		using ( Scene.Push() )
 		{
@@ -34,7 +34,7 @@ public static class MenuScene
 	internal static void Render( SwapChainHandle_t swapChain )
 	{
 		if ( Scene is null ) return;
-		if ( !Game.IsMainMenuVisible ) return;
+		if ( !Game.IsMainMenuVisible && !LoadingScreen.IsVisible ) return;
 		if ( Scene.IsLoading )
 		{
 			Scene.RenderEnvmaps();

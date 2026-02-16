@@ -71,6 +71,11 @@ internal partial class GameInstanceDll
 			FontManager.Instance.LoadAll( FileSystem.Mounted );
 
 			DidMountNetworkedFiles = true;
+
+			// Networked SCSS files are now mounted. For clients joining a developer host,
+			// the .loading assembly came from network tables and the SCSS files are now
+			// in FileSystem.Mounted. Try to create the custom loading screen.
+			TryCreateCustomLoadingScreen();
 		}
 
 		return instance;
@@ -159,9 +164,14 @@ internal partial class GameInstanceDll
 		{
 			foreach ( var assm in compileGroup.BuildResult.Output )
 			{
+				Log.Trace( $"[LoadingScreen] Loading assembly from network: {assm.Compiler.AssemblyName}" );
 				using var stream = new MemoryStream( assm.AssemblyData );
 				AssemblyEnroller.LoadAssemblyFromStream( assm.Compiler.AssemblyName, stream );
 			}
+		}
+		else
+		{
+			Log.Warning( $"[LoadingScreen] Network code archive compilation failed" );
 		}
 
 		//
@@ -177,7 +187,7 @@ internal partial class GameInstanceDll
 		// Don't hotload while we're downloading stuff!
 		using var pauseAsmLoadScope = PauseLoadingAssemblies();
 
-		// Any assemblies come our way? 
+		// Any assemblies come our way?
 		foreach ( var entry in CodeArchiveTable.Entries )
 		{
 			var codeArchive = new CodeArchive( entry.Value.Data );
@@ -317,6 +327,43 @@ internal partial class GameInstanceDll
 		};
 
 		FileWatchers.Add( watcher );
+
+		// Network Loading folder SCSS files for custom loading screens.
+		// The Loading/ folder is at the project root, not inside Code/ or Assets/,
+		// so it's not part of activePackage.FileSystem.
+		NetworkLoadingFolderFiles( project );
+
 		Log.Info( $"..done in {sw.Elapsed.TotalSeconds:0.00}s" );
+	}
+
+	/// <summary>
+	/// Add Loading folder SCSS files to the network so clients can style custom loading screens.
+	/// Files are stored with a "Loading/" prefix so they appear at /Loading/*.scss on the client.
+	/// </summary>
+	void NetworkLoadingFolderFiles( Project project )
+	{
+		if ( project is null || !project.HasLoadingPath() )
+			return;
+
+		var loadingPath = project.GetLoadingPath();
+		if ( !System.IO.Directory.Exists( loadingPath ) )
+			return;
+
+		foreach ( var scssFile in System.IO.Directory.EnumerateFiles( loadingPath, "*.scss", System.IO.SearchOption.AllDirectories ) )
+		{
+			var relativePath = Path.GetRelativePath( loadingPath, scssFile ).Replace( '\\', '/' );
+			var networkPath = $"Loading/{relativePath}";
+
+			try
+			{
+				var bytes = System.IO.File.ReadAllBytes( scssFile );
+				var normalizedPath = BaseFileSystem.NormalizeFilename( networkPath ).TrimStart( '/' );
+				NetworkedSmallFiles.StringTable.Set( normalizedPath, bytes );
+			}
+			catch ( Exception e )
+			{
+				Log.Warning( $"[LoadingScreen] Failed to network {scssFile}: {e.Message}" );
+			}
+		}
 	}
 }

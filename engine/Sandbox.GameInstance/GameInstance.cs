@@ -144,32 +144,69 @@ internal class GameInstance : IGameInstance
 	/// <summary>
 	/// Try to find and create a custom loading screen from the loading assembly.
 	/// Looks for Panel subclasses in any loaded .loading assembly.
+	/// The panel will be hosted by the menu's LoadingOverlay rather than a standalone RootPanel.
 	/// </summary>
-	private void TryCreateCustomLoadingScreen()
+	internal void TryCreateCustomLoadingScreen()
 	{
-		if ( Application.IsHeadless || Application.IsDedicatedServer )
-			return;
+		// Delegates to GameInstanceDll which has the full implementation.
+		// GameInstanceDll.TryCreateCustomLoadingScreen() will call back to
+		// LoadCustomLoadingScreenStyles() if gameInstance is available.
+		GameInstanceDll.Current?.TryCreateCustomLoadingScreen();
+	}
 
-		var panelType = Game.TypeLibrary.GetTypes<Sandbox.UI.Panel>()
-			.Where( x => x.TargetType.Assembly.GetName().Name?.EndsWith( ".loading" ) == true )
-			.FirstOrDefault();
+	/// <summary>
+	/// Load SCSS stylesheets from the Loading folder onto the custom panel.
+	/// The panel's auto-loading uses ClassFileLocationAttribute paths relative to the
+	/// Loading compiler root, which don't resolve via the mounted filesystem.
+	/// For local packages, reads directly from the project's Loading directory on disk.
+	/// For remote packages, tries FileSystem.Mounted (network files include .scss).
+	/// </summary>
+	internal void LoadCustomLoadingScreenStyles( Sandbox.UI.Panel panel )
+	{
+		// For local packages, the Loading/ folder is at the project root level,
+		// NOT inside Code/ or Assets/ (which is what activePackage.FileSystem mounts).
+		// Read directly from disk using the project's Loading path.
+		if ( activePackage?.Package is LocalPackage localPackage )
+		{
+			var loadingPath = localPackage.Project.GetLoadingPath();
+			if ( System.IO.Directory.Exists( loadingPath ) )
+			{
+				try
+				{
+					foreach ( var scssFile in System.IO.Directory.EnumerateFiles( loadingPath, "*.scss", System.IO.SearchOption.AllDirectories ) )
+					{
+						var scss = System.IO.File.ReadAllText( scssFile );
+						if ( !string.IsNullOrEmpty( scss ) )
+						{
+							panel.StyleSheet.Parse( scss );
+						}
+					}
 
-		if ( panelType is null )
-			return;
+					return;
+				}
+				catch ( Exception e )
+				{
+					Log.Warning( $"[LoadingScreen] Failed to load stylesheets from disk: {e.Message}" );
+				}
+			}
+		}
 
+		// For remote packages, SCSS files are sent via network tables and
+		// mounted to FileSystem.Mounted. Try that as a fallback.
 		try
 		{
-			var rootPanel = new Sandbox.UI.RootPanel();
-			var panel = panelType.Create<Sandbox.UI.Panel>();
-			rootPanel.AddChild( panel );
+			foreach ( var file in FileSystem.Mounted.FindFile( "Loading", "*.scss", true ) )
+			{
+				var fullPath = $"Loading/{file}";
+				var scss = FileSystem.Mounted.ReadAllText( fullPath );
 
-			LoadingScreen.CustomPanel = rootPanel;
-			Log.Info( $"Custom loading screen created: {panelType.FullName}" );
+				if ( !string.IsNullOrEmpty( scss ) )
+				{
+					panel.StyleSheet.Parse( scss );
+				}
+			}
 		}
-		catch ( Exception e )
-		{
-			Log.Warning( e, $"Failed to create custom loading screen: {e.Message}" );
-		}
+		catch { }
 	}
 
 	/// <summary>
@@ -498,7 +535,21 @@ internal class GameInstance : IGameInstance
 		Game.ActiveScene = new Scene();
 
 		if ( IsDeveloperHost )
+		{
+			// Create a temporary camera so the loading overlay can render
+			// via engine overlays. The actual scene content arrives via networking.
+			using ( Game.ActiveScene.Push() )
+			{
+				var go = Game.ActiveScene.CreateObject();
+				go.Name = "Loading Camera";
+				go.Flags = GameObjectFlags.Hidden | GameObjectFlags.NotSaved;
+				var cam = go.AddComponent<CameraComponent>();
+				cam.BackgroundColor = Color.Black;
+				cam.IsMainCamera = true;
+			}
+
 			return true;
+		}
 
 		if ( Application.IsEditor && !Game.IsPlaying )
 			return true;

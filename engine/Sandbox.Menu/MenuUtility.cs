@@ -168,6 +168,7 @@ public static partial class MenuUtility
 
 		// Close the loading screen
 		LoadingScreen.IsVisible = false;
+		LoadingScreen.IsReadyToJoin = false;
 	}
 
 	/// <summary>

@@ -355,6 +355,69 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		Networking.System?.SendTableUpdates();
 	}
 
+	public void TryCreateCustomLoadingScreen()
+	{
+		if ( Application.IsHeadless || Application.IsDedicatedServer )
+			return;
+
+		if ( LoadingScreen.HasCustomLoadingScreen )
+			return;
+
+		var panelType = Game.TypeLibrary.GetTypes<Sandbox.UI.Panel>()
+			.Where( x => x.TargetType.Assembly.GetName().Name?.EndsWith( ".loading" ) == true )
+			.FirstOrDefault();
+
+		if ( panelType is null )
+		{
+			Log.Trace( $"[LoadingScreen] No .loading panel type found in TypeLibrary ({Game.TypeLibrary.GetTypes<Sandbox.UI.Panel>().Count()} Panel types total)" );
+			return;
+		}
+
+		try
+		{
+			var panel = panelType.Create<Sandbox.UI.Panel>();
+
+			// Load styles - delegate to GameInstance if available (it has local package paths),
+			// otherwise try FileSystem.Mounted for network-mounted SCSS files.
+			if ( gameInstance is not null )
+			{
+				gameInstance.LoadCustomLoadingScreenStyles( panel );
+			}
+			else
+			{
+				LoadCustomLoadingScreenStylesFromMounted( panel );
+			}
+
+			LoadingScreen.CustomPanel = panel;
+			Log.Info( $"[LoadingScreen] Custom loading screen created: {panelType.FullName}" );
+		}
+		catch ( System.Exception e )
+		{
+			Log.Warning( e, $"[LoadingScreen] Failed to create custom loading screen: {e.Message}" );
+		}
+	}
+
+	/// <summary>
+	/// Load SCSS from FileSystem.Mounted when no GameInstance is available.
+	/// </summary>
+	static void LoadCustomLoadingScreenStylesFromMounted( Sandbox.UI.Panel panel )
+	{
+		try
+		{
+			foreach ( var file in FileSystem.Mounted.FindFile( "Loading", "*.scss", true ) )
+			{
+				var fullPath = $"Loading/{file}";
+				var scss = FileSystem.Mounted.ReadAllText( fullPath );
+
+				if ( !string.IsNullOrEmpty( scss ) )
+				{
+					panel.StyleSheet.Parse( scss );
+				}
+			}
+		}
+		catch { }
+	}
+
 	public void CloseGame()
 	{
 		if ( gameInstance is null ) return;
@@ -373,8 +436,14 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		Application.ClearGame();
 
 		LoadingScreen.IsVisible = false;
+		LoadingScreen.IsReadyToJoin = false;
 		LoadingScreen.Media = null;
-		LoadingScreen.CustomPanel = null;
+
+		if ( LoadingScreen.CustomPanel is not null )
+		{
+			LoadingScreen.CustomPanel.Delete( true );
+			LoadingScreen.CustomPanel = null;
+		}
 
 		Sound.StopAll( 0.2f );
 
@@ -471,7 +540,18 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		if ( activeScene is null ) return;
 		if ( Networking.IsConnecting ) return;
 
-		LoadingScreen.IsVisible = activeScene.IsLoading;
+		if ( activeScene.IsLoading )
+		{
+			LoadingScreen.IsVisible = true;
+		}
+		else if ( LoadingScreen.HasCustomLoadingScreen && !LoadingScreen.IsReadyToJoin && LoadingScreen.IsVisible )
+		{
+			LoadingScreen.IsReadyToJoin = true;
+		}
+		else if ( !LoadingScreen.HasCustomLoadingScreen )
+		{
+			LoadingScreen.IsVisible = false;
+		}
 
 		activeScene.GameTick( 0 ); // we already advanced time 
 
@@ -520,6 +600,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		catch ( System.Exception e )
 		{
 			LoadingScreen.IsVisible = false;
+			LoadingScreen.IsReadyToJoin = false;
 			LoadingScreen.Media = null;
 
 			using ( IMenuDll.Current?.PushScope() )
@@ -658,6 +739,7 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 				{
 					ResetEnvironment();
 					LoadingScreen.IsVisible = false;
+					LoadingScreen.IsReadyToJoin = false;
 					LoadingScreen.Media = null;
 					return;
 				}
@@ -732,6 +814,12 @@ internal partial class GameInstanceDll : Engine.IGameInstanceDll
 		{
 			Log.Warning( "Tried to editor play but we don't have a game instance" );
 			return;
+		}
+
+		// Re-create the custom loading screen if it was destroyed by a previous session
+		if ( !LoadingScreen.HasCustomLoadingScreen )
+		{
+			gameInstance.TryCreateCustomLoadingScreen();
 		}
 
 		Game.IsPlaying = true;

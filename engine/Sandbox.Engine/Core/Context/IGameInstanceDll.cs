@@ -68,6 +68,11 @@ internal unsafe interface IGameInstanceDll
 	/// Load the assemblies from this package into the current game instance
 	/// </summary>
 	public Task LoadPackageAssembliesAsync( Package package );
+
+	/// <summary>
+	/// Try to create a custom loading screen from the .loading assembly.
+	/// </summary>
+	public void TryCreateCustomLoadingScreen() { }
 }
 
 [Flags]

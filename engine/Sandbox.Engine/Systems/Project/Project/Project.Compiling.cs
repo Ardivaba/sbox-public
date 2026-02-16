@@ -24,7 +24,7 @@ public partial class Project
 	int lastCompilerHash;
 
 	// anything that means we need to re-create the compiler and recompile should be here
-	int CompilerHash => HashCode.Combine( Active, Current == this, Json.SerializeAsObject( Config.GetCompileSettings() ).ToJsonString(), Config.IsStandaloneOnly, Config.Org, Config.Ident, Config.Type, string.Join( ";", PackageReferences() ) );
+	int CompilerHash => HashCode.Combine( Active, Current == this, Json.SerializeAsObject( Config.GetCompileSettings() ).ToJsonString(), Config.IsStandaloneOnly, Config.Org, Config.Ident, HashCode.Combine( Config.Type, string.Join( ";", PackageReferences() ), HasEditorPath(), HasLoadingPath() ) );
 
 	/// <summary>
 	/// These package types should reference package.base

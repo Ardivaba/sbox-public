@@ -102,6 +102,17 @@ FileSystem.Data.WriteAllText( "loading_preferences.json", json );
 var json = FileSystem.Data.ReadAllText( "loading_preferences.json" );
 ```
 
+## Editor Preview
+
+The editor includes a **Loading Screen** dock panel (under View > Editor > Loading Screen) that lets you preview your loading screen without launching the game.
+
+The dock shows:
+- The detected loading panel type from your `Loading` folder
+- Title and Subtitle fields to simulate loading state
+- A **Preview** button that creates your loading screen as a fullscreen overlay
+
+When you click Preview, the loading panel renders on top of the editor. Edit Title/Subtitle to see how your panel responds. Changes to your Razor files trigger a hot-reload that automatically refreshes the preview.
+
 ## Constraints
 
 - Loading code compiles independently from your `Code` folder. You cannot reference types defined in `Code` from `Loading`.

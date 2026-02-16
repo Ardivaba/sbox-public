@@ -10,7 +10,7 @@ namespace Sandbox;
 [Icon( "desktop_windows" )]
 [EditorHandle( "materials/gizmo/ui.png" )]
 [Alias( "PanelRoot" )]
-public sealed class ScreenPanel : Component, IRootPanelComponent
+public sealed class ScreenPanel : Component, Component.ExecuteInEditor, IRootPanelComponent
 {
 	[Property, Range( 0, 1 )] public float Opacity { get; set; } = 1.0f;
 	[Property, Range( 0, 5 )] public float Scale { get; set; } = 1.0f;
