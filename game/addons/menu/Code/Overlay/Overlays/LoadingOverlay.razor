@@ -1,55 +1,73 @@
-﻿@using Sandbox;
+@using Sandbox;
 @using Sandbox.UI;
 @inherits Panel
 
 <root>
 
-    @if (!string.IsNullOrWhiteSpace(LoadingScreen.Media))
+    @if (_customPanel is null)
     {
-        <div class="background" style="background-image: url( @LoadingScreen.Media );"></div>
-    }
-    else
-    {
-        <div class="title">loading</div>
-    }
+        @if (!string.IsNullOrWhiteSpace(LoadingScreen.Media))
+        {
+            <div class="background" style="background-image: url( @LoadingScreen.Media );"></div>
+        }
+        else
+        {
+            <div class="title">loading</div>
+        }
 
-    <div class="loading-panel">       
+        <div class="loading-panel">
 
-        <div class="loading-info">
+            <div class="loading-info">
 
-            @if (string.IsNullOrWhiteSpace(LoadingScreen.Title ))
-            {
-                <div class="status">@LoadingScreen.Tasks.FirstOrDefault()?.Title</div>
-                @if (LoadingScreen.Tasks.Count > 1)
+                @if (string.IsNullOrWhiteSpace(LoadingScreen.Title ))
                 {
-                    var str = $"and {LoadingScreen.Tasks.Count-1} other tasks..";
-                    <div class="eta">@str</div>
+                    <div class="status">@LoadingScreen.Tasks.FirstOrDefault()?.Title</div>
+                    @if (LoadingScreen.Tasks.Count > 1)
+                    {
+                        var str = $"and {LoadingScreen.Tasks.Count-1} other tasks..";
+                        <div class="eta">@str</div>
+                    }
                 }
-            }
-            else
-            {
-
-                <div class="status">@LoadingScreen.Title</div>
-                @if ( !string.IsNullOrWhiteSpace( LoadingScreen.Subtitle ) )
+                else
                 {
-                    <div class="eta">@LoadingScreen.Subtitle</div>
-                }
-            }
 
+                    <div class="status">@LoadingScreen.Title</div>
+                    @if ( !string.IsNullOrWhiteSpace( LoadingScreen.Subtitle ) )
+                    {
+                        <div class="eta">@LoadingScreen.Subtitle</div>
+                    }
+                }
+
+            </div>
+
+            <div class="cancel-button" onclick=@MenuUtility.CancelLoading>Cancel</div>
         </div>
-
-        <div class="cancel-button" onclick=@MenuUtility.CancelLoading>Cancel</div>
-    </div>
+    }
 
 </root>
 
 @code
 {
+    Panel _customPanel;
 
-    protected override int BuildHash() => System.HashCode.Combine(LoadingScreen.IsVisible, LoadingScreen.Title, LoadingScreen.Subtitle, LoadingScreen.Media, LoadingScreen.Tasks.Count);
+    protected override int BuildHash() => System.HashCode.Combine(
+        LoadingScreen.IsVisible, LoadingScreen.Title, LoadingScreen.Subtitle,
+        LoadingScreen.Media, LoadingScreen.Tasks.Count, LoadingScreen.HasCustomLoadingScreen );
 
     public override void Tick()
     {
         SetClass( "visible", LoadingScreen.IsVisible );
+
+        // Adopt or release the custom loading panel
+        var customPanel = LoadingScreen.CustomPanel;
+        if ( customPanel != _customPanel )
+        {
+            _customPanel = customPanel;
+
+            if ( _customPanel is not null )
+            {
+                AddChild( _customPanel );
+            }
+        }
     }
 }

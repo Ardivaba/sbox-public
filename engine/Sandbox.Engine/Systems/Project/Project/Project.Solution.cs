@@ -57,6 +57,7 @@ public sealed partial class Project
 			{
 				compilerSettings.IgnoreFolders.Add( "editor" );
 				compilerSettings.IgnoreFolders.Add( "unittest" );
+				compilerSettings.IgnoreFolders.Add( "loading" );
 			}
 
 			project = generator.AddProject( Config.Type, Config.FullIdent, projectName, GetCodePath(), compilerSettings );
@@ -124,6 +125,16 @@ public sealed partial class Project
 
 		if ( Config.Type == "game" || Config.Type == "library" )
 		{
+			//
+			// Loading screen project
+			//
+			var loadingProject = AddLoadingProjectFrom( projectName, generator );
+			if ( loadingProject is not null )
+			{
+				loadingProject.Folder = projectFolder;
+				loadingProject.SandboxProjectFilePath = ConfigFilePath;
+			}
+
 			//
 			// Editor project
 			//
@@ -221,6 +232,34 @@ public sealed partial class Project
 		if ( Config.Type == "game" )
 		{
 			AddLibrariesToProject( project );
+		}
+
+		return project;
+	}
+
+	ProjectInfo AddLoadingProjectFrom( string projectName, Sandbox.SolutionGenerator.Generator generator )
+	{
+		if ( !HasLoadingPath() )
+			return default;
+
+		var compilerSettings = Config.GetCompileSettings();
+		var project = generator.AddProject( Config.Type, $"{Config.FullIdent}.loading", $"{projectName}.loading", GetLoadingPath(), compilerSettings );
+
+		//
+		// Add each reference to the project
+		//
+		foreach ( var reference in compilerSettings.DistinctAssemblyReferences )
+		{
+			project.References.Add( $"{reference}.dll" );
+		}
+
+		project.GlobalUsing.Add( "Microsoft.AspNetCore.Components" );
+		project.GlobalUsing.Add( "Microsoft.AspNetCore.Components.Rendering" );
+		project.GlobalStatic.Add( "Sandbox.Internal.GlobalGameNamespace" );
+
+		if ( !project.PackageReferences.Contains( "local.base" ) )
+		{
+			project.PackageReferences.Add( "local.base" );
 		}
 
 		return project;

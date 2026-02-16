@@ -204,8 +204,9 @@ public partial class CompilerTest
 		//
 		{
 			var compilerSettings = new Compiler.Configuration();
-			compilerSettings.IgnoreFolders.Add( "editor" ); // ignore editor folders
-			compilerSettings.IgnoreFolders.Add( "unittest" ); // ignore editor folders
+			compilerSettings.IgnoreFolders.Add( "editor" );
+			compilerSettings.IgnoreFolders.Add( "unittest" );
+			compilerSettings.IgnoreFolders.Add( "loading" );
 			group.CreateCompiler( "test", codePath, compilerSettings );
 		}
 

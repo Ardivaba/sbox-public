@@ -80,12 +80,14 @@ public class StyleSheet
 	{
 		ctx ??= GlobalContext.Current;
 
-		if ( ctx.FileMount is null )
+		var fileMount = ctx.FileMount ?? GlobalContext.Menu?.FileMount;
+
+		if ( fileMount is null )
 		{
 			return false;
 		}
 
-		if ( failSilently && !ctx.FileMount.FileExists( name ) )
+		if ( failSilently && !fileMount.FileExists( name ) )
 		{
 			Nodes = new();
 			return true;
@@ -93,7 +95,7 @@ public class StyleSheet
 
 		try
 		{
-			var text = ctx.FileMount.ReadAllText( name );
+			var text = fileMount.ReadAllText( name );
 			if ( text is null ) throw new System.IO.FileNotFoundException( "File not found", name );
 
 			return UpdateFromString( text, name, failSilently );
@@ -151,7 +153,8 @@ public class StyleSheet
 		Watcher?.Dispose();
 		Watcher = null;
 
-		if ( GlobalContext.Current.FileMount is null )
+		var fileMount = GlobalContext.Current.FileMount ?? GlobalContext.Menu?.FileMount;
+		if ( fileMount is null )
 			return;
 
 		//
@@ -160,11 +163,11 @@ public class StyleSheet
 		//
 		var context = GlobalContext.Current;
 
-		Watcher = context.FileMount.Watch();
+		Watcher = fileMount.Watch();
 		Watcher.OnChanges += x =>
 		{
 			UpdateFromFile( name, true, context );
-			context.UISystem.DirtyAllStyles();
+			context.UISystem?.DirtyAllStyles();
 		};
 
 		foreach ( var file in IncludedFiles )

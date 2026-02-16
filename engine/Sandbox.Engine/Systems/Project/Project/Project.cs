@@ -112,6 +112,9 @@ public sealed partial class Project
 		EditorCompiler?.Dispose();
 		EditorCompiler = null;
 
+		LoadingCompiler?.Dispose();
+		LoadingCompiler = null;
+
 		AssemblyFileSystem?.Dispose();
 	}
 
@@ -194,6 +197,16 @@ public sealed partial class Project
 	/// Returns true if the Editor path exists
 	/// </summary>
 	public bool HasEditorPath() => RootDirectory is not null && System.IO.Directory.Exists( GetEditorPath() );
+
+	/// <summary>
+	/// Absolute path to the Loading folder of the project.
+	/// </summary>
+	public string GetLoadingPath() => System.IO.Path.Combine( RootDirectory.FullName, "Loading" );
+
+	/// <summary>
+	/// Returns true if the Loading path exists
+	/// </summary>
+	public bool HasLoadingPath() => RootDirectory is not null && System.IO.Directory.Exists( GetLoadingPath() );
 
 	/// <summary>
 	/// Absolute path to the Assets folder of the project, or <see langword="null"/> if not set.

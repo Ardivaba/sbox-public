@@ -72,6 +72,8 @@ internal partial class StandaloneGameInstance : GameInstance
 			return false;
 		}
 
+		TryCreateCustomLoadingScreen();
+
 		LoadingScreen.Title = $"Loading Resources";
 
 		FileSystem.Mounted.Mount( new LocalFileSystem( Standalone.GamePath ) );
