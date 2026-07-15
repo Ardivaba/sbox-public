@@ -308,6 +308,7 @@ sealed class SceneTab : Widget
 	{
 		base.OnMousePress( e );
 		if ( e.LeftMouseButton ) Session.MakeActive();
+		if ( e.MiddleMouseButton ) CloseSession();
 	}
 
 	protected override void OnContextMenu( ContextMenuEvent e )

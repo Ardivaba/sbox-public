@@ -6,11 +6,19 @@ public partial class DockManager : Widget
 {
 	internal Native.CDockManager _nativeDockManager;
 
+	// Sets ADS MiddleMouseButtonClosesTab (0x2000000) via the DLL's exported static, so the
+	// flag works against prebuilt native binaries. The durable fix is a setConfigFlag line
+	// in DockManager.def Setup - once the native side ships with it, delete this.
+	[System.Runtime.InteropServices.DllImport( "qtadvanceddocking.dll", EntryPoint = "?setConfigFlag@CDockManager@ads@@SAXW4eConfigFlag@12@_N@Z" )]
+	static extern void AdsSetConfigFlag( int flag, [System.Runtime.InteropServices.MarshalAs( System.Runtime.InteropServices.UnmanagedType.I1 )] bool on );
+
 	public DockManager( Widget parent = null ) : base( false )
 	{
 		Sandbox.InteropSystem.Alloc( this );
 
 		Native.CDockManager.Setup();
+
+		try { AdsSetConfigFlag( 0x2000000, true ); } catch ( Exception e ) { Log.Warning( $"MiddleMouseButtonClosesTab poke failed: {e.Message}" ); }
 
 		_nativeDockManager = Native.CDockManager.Create( parent?._widget ?? default );
 		NativeInit( _nativeDockManager );
